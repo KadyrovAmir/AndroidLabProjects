@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ServicePeopleList</string>
+    <string name="title_activity_people_info">PeopleInfoActivity</string>
+</resources>
