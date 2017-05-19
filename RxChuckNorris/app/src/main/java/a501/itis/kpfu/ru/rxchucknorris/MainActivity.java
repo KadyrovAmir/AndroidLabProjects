@@ -6,21 +6,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import a501.itis.kpfu.ru.rxchucknorris.joke.Joke;
-import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
-import retrofit2.converter.gson.GsonConverterFactory;
-import rx.Observable;
-import rx.Subscriber;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.schedulers.Schedulers;
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements TaskListener {
 
     private TextView tv;
     private Button btn;
@@ -54,40 +41,43 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 progressBar.setVisibility(View.VISIBLE);
-                Gson gson = new GsonBuilder().create();
-                Retrofit retrofit = new Retrofit.Builder()
-                        .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                        .addConverterFactory(GsonConverterFactory.create(gson))
-                        .baseUrl("http://api.icndb.com/")
-                        .build();
-                LinkAPI interfaceAPI = retrofit.create(LinkAPI.class);
-                Observable<Joke> joke = interfaceAPI.getJoke();
-                joke.subscribeOn(Schedulers.newThread())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(new Subscriber<Joke>() {
-                            @Override
-                            public void onCompleted() {
-                                progressBar.setVisibility(View.GONE);
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-                                Toast.makeText(MainActivity.this, "Упс! Что-то пошло не так!", Toast.LENGTH_SHORT).show();
-                                progressBar.setVisibility(View.GONE);
-                            }
-
-                            @Override
-                            public void onNext(Joke joke) {
-                                tv.setText(joke.getValue().getJoke());
-                            }
-                        });
+                getAsyncContainer().getJoke(tv, progressBar);
             }
         });
     }
+
+    private AsyncFragment getAsyncContainer() {
+        AsyncFragment fragment = (AsyncFragment) getFragmentManager()
+                .findFragmentByTag(AsyncFragment.class.getName());
+        if (fragment == null) {
+            fragment = new AsyncFragment();
+            fragment.onAttach(this);
+            getFragmentManager().beginTransaction()
+                    .add(new AsyncFragment(), AsyncFragment.class.getName())
+                    .commit();
+        }
+        return fragment;
+    }
+
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt(KEY_CURRENT_PROGRESS_VISIBILITY, progressBar.getVisibility());
         outState.putString(KEY_CURRENT_TEXT, tv.getText().toString());
+    }
+
+
+    @Override
+    public void onTaskFinish(String joke) {
+        TextView newTextView = (TextView) findViewById(R.id.text);
+        ProgressBar newProgressBar = (ProgressBar) findViewById(R.id.progress);
+        newProgressBar.setVisibility(View.GONE);
+        newTextView.setText(joke);
+    }
+
+    @Override
+    public void onTaskStarted() {
+        progressBar = (ProgressBar) findViewById(R.id.progress);
+        progressBar.setVisibility(View.GONE);
     }
 }
